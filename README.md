@@ -1,8 +1,12 @@
 # covid19-norway-nowcast
 
-Experimenting with nowcasting Norway's covid-19 case counts.
+Experiments nowcasting Norway's covid-19 case counts.
 
-## Run in docker
+## Local setup
+
+You need JAGS. `brew install jags` on OS X or `apt-get install jags` on Debian/Ubuntu.
+
+## Run API in Docker
 
 	$ docker build . -t covid19-nowcast
 	$ docker run --rm -p 8000:8000 covid19-nowcast

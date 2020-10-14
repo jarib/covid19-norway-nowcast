@@ -1,9 +1,12 @@
-source("./nowcasts.R")
+source("nowcasts.R")
+source("utils.R")
 
 prepare_data <- function(input) {
   input %>%
-    mutate(reportDate = as.Date(reportDate),
-           testDate = as.Date(testDate))
+    mutate(
+      reportDate = as.Date(reportDate),
+      testDate = as.Date(testDate)
+    )
 }
 
 #' Nowcast hh
@@ -29,20 +32,34 @@ nowcast_data_nobbs <-
 
 #' Nowcast HH plot
 #' @post /nowcast/hh/plot
-#' @serializer png
+#' @png (width=1000, height=400)
 #'
 nowcast_hh_plot <-
-  function(dates) {
-    nc <- nowcast_hh(prepare_data(dates), raw=TRUE)
+  function(dates, days=60) {
+    data <- prepare_data(dates)
+    nc <- nowcast_hh(data)
 
-    plot(
-      nc,
-      xaxis.tickFreq = list("%d" = atChange, "%m" = atChange),
-      xaxis.labelFreq = list("%d" = at2ndChange),
-      xaxis.labelFormat = "%d-%b",
-      legend.opts = NULL,
-      xlab = "Time (days)",
-      lty = c(1, 1, 1, 1)
-    )
+    data %>%
+      count_by_date(testDate) %>%
+      tail(days) %>% 
+      combine_nowcast(nc) %>%
+      plot_nowcast() %>% 
+      print()
   }
 
+#' Nowcast NoBBS plot
+#' @post /nowcast/nobbs/plot
+#' @png (width=1000, height=400)
+#'
+nowcast_nobbs_plot <-
+  function(dates, days=60) {
+    data <- prepare_data(dates)
+    nc <- nowcast_nobbs(data)
+
+    data %>%
+      count_by_date(testDate) %>%
+      tail(days) %>% 
+      combine_nowcast(nc) %>%
+      plot_nowcast() + ggtitle("NobBS nowcast") %>%
+      print()
+  }

@@ -66,24 +66,24 @@ nowcast_hh <- function(data, raw = FALSE) {
   )
 
   if (raw) {
-    nc
-  } else {
-    nc %>%
-      as_tibble() %>%
-      # Add prediction interval
-      mutate(low = nc@pi[, , 1],  high =  nc@pi[, , 2]) %>%
-      # Return only time points which were nowcasted.
-      filter(!is.na(upperbound)) %>%
-      select(date = epoch, observed, low, high, predicted = upperbound) %>%
-      mutate(obnyr = predicted - observed,
-             completeness = observed / predicted)
-
+    return(nc)
   }
+
+  nc %>%
+    as_tibble() %>%
+    # Add prediction interval
+    mutate(low = nc@pi[, , 1],  high =  nc@pi[, , 2]) %>%
+    # Return only time points which were nowcasted.
+    filter(!is.na(upperbound)) %>%
+    select(date = epoch, observed, low, high, predicted = upperbound) %>%
+    mutate(obnyr = predicted - observed,
+           completeness = observed / predicted)
+
 }
 
 
 # https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1007735#sec009
-nowcast_nobbs <- function(data) {
+nowcast_nobbs <- function(data, raw=FALSE) {
   df <- data.frame(data)
 
   nc <- NobBS(
@@ -96,6 +96,10 @@ nowcast_nobbs <- function(data) {
     quiet = FALSE,
     specs = list(dist = "NB")
   )
+
+  if (raw) {
+    return(nc)
+  }
 
   nc$estimates %>%
     as_tibble() %>%
