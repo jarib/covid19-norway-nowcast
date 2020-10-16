@@ -1,6 +1,9 @@
+library(tidyverse)
 library(zoo)
 library(ggplot2)
 library(ggthemes)
+library(httr)
+library(jsonlite)
 
 plots.theme <- theme_fivethirtyeight
 plots.mavg.window <- 7
@@ -67,4 +70,19 @@ count_by_date <- function(data, x) {
     rename(date = {{ x }}) %>%
     arrange(date) %>%
     count_and_roll()
+}
+
+fetch_latest_linelist <- function() {
+  GET("https://www.vg.no/spesial/2020/coronavirus-data/nowcast/dates.json") %>%
+    stop_for_status() %>%
+    content(as = "text", encoding = "UTF-8") %>%
+    fromJSON() %>%
+    .$dates %>%
+    as_tibble %>%
+    mutate(
+      reportDate = as.Date(reportDate),
+      testDate = as.Date(testDate),
+      delay = as.numeric(reportDate - testDate)
+    )
+
 }

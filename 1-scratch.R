@@ -8,18 +8,7 @@ library(jsonlite)
 source("nowcasts.R")
 source("utils.R")
 
-df <-
-  GET("https://www.vg.no/spesial/2020/coronavirus-data/nowcast/dates.json") %>%
-  stop_for_status() %>%
-  content(as = "text", encoding = "UTF-8") %>%
-  fromJSON() %>%
-  .$dates %>%
-  mutate(
-    reportDate = as.Date(reportDate),
-    testDate = as.Date(testDate),
-    delay = as.numeric(reportDate - testDate)
-  )
-
+df <- fetch_latest_linelist()
 
 colors <- wes_palette("Royal1")
 minDate <- min(min(df$testDate), min(df$reportDate)) + 90 + 30
@@ -51,15 +40,13 @@ msis <-
 
 # data for which we want to nowcast
 nowcast_input <-
-  as.data.frame(df %>% filter(reportDate <= (maxDate)))
+  as.data.frame(df %>% filter(reportDate <= maxDate))
 
 nc_hh <- nowcast_hh(nowcast_input)
 nc_nobbs <- nowcast_nobbs(nowcast_input)
 nc_naive <-
   nowcast_weights(
-    nowcast_input,
-    # weights calculated elsewhere
-    c(1.1462158912326739, 1.48626580621125, 6.043134426689718)
+    nowcast_input
   )
 
 plt_rdate <-
@@ -88,11 +75,12 @@ grid.arrange(
   nrow = 5
 )
 
+
 ts_test_with_nc <-
   ts_test %>%
   left_join(nc_hh %>% setNames(paste0(names(.), ".hh")), by = c("date" = "date.hh")) %>%
   left_join(nc_nobbs %>% setNames(paste0(names(.), ".nobbs")), by = c("date" = "date.nobbs")) %>%
-  left_join(nc_weights %>% setNames(paste0(names(.), ".naive")), by = c("date" = "date.naive")) %>%
+  left_join(nc_naive %>% setNames(paste0(names(.), ".naive")), by = c("date" = "date.naive")) %>%
   mutate(
     observed = n,
     across(starts_with("predicted."), roll, .names = "{.col}.mavg"),

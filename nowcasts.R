@@ -6,6 +6,8 @@ config.window <- 21
 config.maxDelay <- 21
 config.predictDays <- 21
 
+config.naive.weights <- c(1.1462158912326739, 1.48626580621125, 6.043134426689718)
+
 # https://staff.math.su.se/hoehle/blog/2016/07/19/nowCast.html
 nowcast_hh <- function(data, raw = FALSE) {
   method = 'bayes.trunc'
@@ -114,14 +116,14 @@ nowcast_nobbs <- function(data, raw=FALSE) {
            obnyr = predicted - observed)
 }
 
-nowcast_weights <- function(data, weights) {
+nowcast_weights <- function(data) {
   counts <- data %>%
     as_tibble() %>%
     rename(date = testDate) %>%
     count(date, name = "observed")
 
   counts$weight <-
-    do.call(c, list(rep(1, nrow(counts) - length(weights)), weights))
+    do.call(c, list(rep(1, nrow(counts) - length(config.naive.weights)), config.naive.weights))
 
   counts %>% mutate(
     predicted = round(observed * weight),
