@@ -19,8 +19,8 @@ date_filter <- function(x) {
 }
 
 # set up data
-ts_test <- count_by_date(df, testDate) %>% date_filter()
-ts_report <- count_by_date(df, reportDate) %>% date_filter()
+ts_test <- df %>% count_by_date(testDate) %>% date_filter()
+ts_report <- df %>% count_by_date(reportDate) %>% date_filter()
 
 msis <-
   GET("https://redutv-api.vg.no/corona/v1/msis/total") %>%
@@ -38,9 +38,11 @@ msis <-
   ) %>%
   date_filter()
 
+
+nowcast_shift <- 10
 # data for which we want to nowcast
 nowcast_input <-
-  as.data.frame(df %>% filter(reportDate <= maxDate))
+  as.data.frame(df %>% filter(reportDate <= maxDate - nowcast_shift))
 
 nc_hh <- nowcast_hh(nowcast_input)
 nc_nobbs <- nowcast_nobbs(nowcast_input)
@@ -67,22 +69,21 @@ plt_tdate_nowcast_weights <-
   plot_nowcast(combine_nowcast(ts_test, nc_naive)) + ggtitle("FHI Github etter prøvedato", subtitle = "med nowcast (naiv vekting)")
 
 grid.arrange(
-  plt_rdate,
-  plt_msis_rdate,
+  # plt_rdate,
+  # plt_msis_rdate,
   plt_tdate_nowcast_hh,
   plt_tdate_nowcast_nobbs,
-  plt_tdate_nowcast_weights,
-  nrow = 5
+  # plt_tdate_nowcast_weights,
+  nrow = 2
 )
-
 
 ts_test_with_nc <-
   ts_test %>%
   left_join(nc_hh %>% setNames(paste0(names(.), ".hh")), by = c("date" = "date.hh")) %>%
   left_join(nc_nobbs %>% setNames(paste0(names(.), ".nobbs")), by = c("date" = "date.nobbs")) %>%
   left_join(nc_naive %>% setNames(paste0(names(.), ".naive")), by = c("date" = "date.naive")) %>%
+  rename(cases = n) %>%
   mutate(
-    observed = n,
     across(starts_with("predicted."), roll, .names = "{.col}.mavg"),
     # rolling average of CI - probably not correct!
     across(starts_with("low."), roll, .names = "{.col}.mavg"),

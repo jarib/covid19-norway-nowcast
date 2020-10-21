@@ -22,8 +22,10 @@ plot_with_mavg <- function(data, x, y, line) {
     plots.theme()
 }
 
-plot_nowcast <- function(data) {
-  data %>%
+plot_nowcast <- function(data, mavg = TRUE) {
+  colors <- c("cases" = "lightsteelblue4", "observed" = "indianred4", "predicted" = "#7AD2F6")
+  
+  plt <- data %>%
     mutate(
       predicted.mavg = roll(predicted),
       # rolling average of CI - probably not correct!
@@ -31,23 +33,29 @@ plot_nowcast <- function(data) {
       high.mavg = roll(high)
     ) %>%
     ggplot() +
-    geom_col(aes(x = date, y = observed)) +
-    geom_line(aes(x = date, y = mavg)) +
-    scale_x_date(date_breaks = "2 weeks", date_labels = "%b %d") +
-    theme_wsj() +
-    geom_col(aes(x = date, y = predicted), alpha = 0.3) +
+    geom_col(aes(x = date, y = predicted, fill = "predicted")) +
+    geom_col(aes(x = date, y = cases, fill = "cases"), alpha = 0.5) +
+    geom_col(aes(x = date, y = observed, fill = "observed"), alpha = 0.5) +
     geom_errorbar(aes(x = date, ymin = low, ymax = high)) +
-    geom_line(aes(x = date, y = predicted.mavg),
-      color = "indianred3",
-      linetype = "longdash"
-    ) +
-    geom_ribbon(
-      fill = "indianred3",
-      aes(x = date, ymin = low.mavg, ymax = high.mavg),
-      alpha = 0.3
-    ) +
+    scale_x_date(date_breaks = "2 weeks", date_labels = "%b %d") +
+    scale_fill_manual(name="", values=colors) +
     labs(x = "", y = "n") +
     plots.theme()
+
+  if (mavg) {
+    plt <- plt + geom_line(aes(x = date, y = mavg)) +
+      geom_line(aes(x = date, y = predicted.mavg),
+        color = "indianred3",
+        linetype = "longdash"
+      ) +
+      geom_ribbon(
+        fill = "indianred3",
+        aes(x = date, ymin = low.mavg, ymax = high.mavg),
+        alpha = 0.3
+      )
+  }
+
+  plt
 }
 
 count_and_roll <- function(x) {
@@ -59,8 +67,12 @@ count_and_roll <- function(x) {
 combine_nowcast <- function(data, nowcast) {
   data %>%
     left_join(nowcast, by = c("date" = "date")) %>%
+    rename(
+      cases = n,
+      predicted_obnyr = obnyr,
+    ) %>%
     mutate(
-      observed = n,
+      actual_obnyr = cases - observed
     )
 }
 
@@ -78,11 +90,10 @@ fetch_latest_linelist <- function() {
     content(as = "text", encoding = "UTF-8") %>%
     fromJSON() %>%
     .$dates %>%
-    as_tibble %>%
+    as_tibble() %>%
     mutate(
       reportDate = as.Date(reportDate),
       testDate = as.Date(testDate),
       delay = as.numeric(reportDate - testDate)
     )
-
 }

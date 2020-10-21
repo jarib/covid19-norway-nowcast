@@ -8,6 +8,9 @@ config.predictDays <- 21
 
 config.naive.weights <- c(1.1462158912326739, 1.48626580621125, 6.043134426689718)
 
+config.hh.prior.weights.mean <- 1
+config.hh.prior.weights.variance <- 5
+
 # https://staff.math.su.se/hoehle/blog/2016/07/19/nowCast.html
 nowcast_hh <- function(data, raw = FALSE) {
   method = 'bayes.trunc'
@@ -50,7 +53,6 @@ nowcast_hh <- function(data, raw = FALSE) {
     m = config.window,
     method = method,
     control = list(
-      N.tInf.max = 1000,
       N.tInf.prior = structure(
         "poisgamma",
 
@@ -58,8 +60,8 @@ nowcast_hh <- function(data, raw = FALSE) {
         # As a dirty fix we therefore just inflate the prior variance
         # by a factor - as future work this needs to be improved upon
         # by following a proper marginal likelihood approach."
-        mean.lambda = 0.8 * mean(observed(sts)),
-        var.lambda = 5 * var(observed(sts))
+        mean.lambda = config.hh.prior.weights.mean * mean(observed(sts)),
+        var.lambda = config.hh.prior.weights.variance * var(observed(sts))
       ),
       nSamples = 1000,
       score = TRUE,
@@ -85,7 +87,7 @@ nowcast_hh <- function(data, raw = FALSE) {
 
 
 # https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1007735#sec009
-nowcast_nobbs <- function(data, raw=FALSE) {
+nowcast_nobbs <- function(data, raw=FALSE, dist = "NB") {
   df <- data.frame(data)
 
   nc <- NobBS(
@@ -96,7 +98,7 @@ nowcast_nobbs <- function(data, raw=FALSE) {
     report_date = "reportDate",
     moving_window = config.window,
     quiet = FALSE,
-    specs = list(dist = "NB")
+    specs = list(dist = dist)
   )
 
   if (raw) {
@@ -129,7 +131,8 @@ nowcast_weights <- function(data) {
     predicted = round(observed * weight),
     low = predicted,
     high = predicted,
-    completeness = observed / predicted
+    completeness = observed / predicted,
+    obnyr = predicted - observed
   ) %>%
     tail(config.predictDays)
 }
